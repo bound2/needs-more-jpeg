@@ -17,6 +17,19 @@ class ImageData:
         self.timestamp = timestamp
         self.file_path = None
 
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.url == other.url
+        return NotImplemented
+
+    def __ne__(self, other):
+        if isinstance(other, self.__class__):
+            return not self.__eq__(other)
+        return NotImplemented
+
+    def __hash__(self):
+        return hash(self.url)
+
 
 class TelegramParser(ChatHandler):
     TTL = 2 * 60 * 1000
@@ -30,10 +43,12 @@ class TelegramParser(ChatHandler):
 
     def __init__(self, *args, **kwargs):
         super(TelegramParser, self).__init__(*args, **kwargs)
+        # TODO CHAT ID as dict key, set as value
         self.url_cache = set()
 
     def on_chat_message(self, msg):
         raw_text = msg.get('text')
+        print raw_text
         current_timestamp = int(time.time())
 
         if 'needs more jpeg' in raw_text:

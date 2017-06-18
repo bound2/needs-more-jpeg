@@ -9,6 +9,7 @@ from telepot.helper import ChatHandler
 from telepot.loop import MessageLoop
 from telepot.delegate import per_chat_id, create_open, pave_event_space
 from PIL import Image
+from collections import defaultdict
 
 
 class ImageData:
@@ -26,7 +27,7 @@ class ImageData:
         if isinstance(other, self.__class__):
             return not self.__eq__(other)
         return NotImplemented
-
+    # TODO url hash comparison is bad due to it not existing in image messages
     def __hash__(self):
         return hash(self.url)
 
@@ -43,8 +44,7 @@ class TelegramParser(ChatHandler):
 
     def __init__(self, *args, **kwargs):
         super(TelegramParser, self).__init__(*args, **kwargs)
-        # TODO CHAT ID as dict key, set as value
-        self.url_cache = set()
+        self._cache = defaultdict(frozenset)
 
     def on_chat_message(self, msg):
         raw_text = msg.get('text')
@@ -58,7 +58,7 @@ class TelegramParser(ChatHandler):
 
     def process_text_message(self, text, timestamp):
         if 'needs more jpeg' in text:
-            for image in self.url_cache:
+            for image in self._cache[self.chat_id]:
                 if image.timestamp + TelegramParser.TTL > timestamp:
                     file_path = self.process_image(image.url, image.file_path)
                     if file_path is not None:
@@ -68,11 +68,11 @@ class TelegramParser(ChatHandler):
         else:
             urls = re.findall(TelegramParser.URL_REGEX, text)
             if len(urls) > 0:
-                self.url_cache.clear()
+                self._clear_cache()
 
             for url in urls:
                 image_data = ImageData(url, timestamp)
-                self.url_cache.add(image_data)
+                self._add_to_cache(image_data)
 
     # TODO check multiple image upload
     def process_image_message(self, photos, timestamp):
@@ -86,9 +86,17 @@ class TelegramParser(ChatHandler):
         new_file_path = TelegramParser.cache_file_path()
         self.bot.download_file(file_id=file_id, dest=new_file_path)
 
-        self.url_cache.clear()
+        self._clear_cache()
         image_data = ImageData(url=None, timestamp=timestamp, file_path=new_file_path)
-        self.url_cache.add(image_data)
+        self._add_to_cache(image_data)
+
+    def _add_to_cache(self, image_data):
+        cached_images = set(self._cache[self.chat_id])
+        cached_images.add(image_data)
+        self._cache[self.chat_id] = frozenset(cached_images)
+
+    def _clear_cache(self):
+        self._cache[self.chat_id] = frozenset()
 
     @staticmethod
     def process_image(url, file_path):

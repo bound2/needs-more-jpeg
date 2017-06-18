@@ -11,28 +11,32 @@ from telepot.delegate import per_chat_id, create_open, pave_event_space
 from PIL import Image
 from collections import defaultdict
 from ConfigParser import ConfigParser
+from enum import Enum
+
+
+class RecordType(Enum):
+    TEXT = 1
+    IMAGE = 2
 
 
 class ImageData:
-    def __init__(self, url, timestamp, file_path=None, quality=50):
-        self.url = url
+    def __init__(self, identifier, record_type, timestamp, file_path=None, quality=50):
+        self.identifier = identifier
+        self.record_type = record_type
         self.timestamp = timestamp
         self.file_path = file_path
         self.quality = quality
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
-            return self.url == other.url
+            return self.identifier == other.identifier
         return NotImplemented
 
     def __ne__(self, other):
-        if isinstance(other, self.__class__):
-            return not self.__eq__(other)
-        return NotImplemented
+        return not self.__eq__(other)
 
-    # TODO url hash comparison is bad due to it not existing in image messages
     def __hash__(self):
-        return hash(self.url)
+        return hash(self.identifier)
 
 
 class TelegramParser(ChatHandler):
@@ -65,7 +69,7 @@ class TelegramParser(ChatHandler):
                 for image in TelegramParser.CACHE[self.chat_id]:
                     if image.timestamp + TelegramParser.TTL > timestamp:
                         new_quality = self.determine_new_quality(image.quality)
-                        file_path = self.process_image(image.url, image.file_path, new_quality)
+                        file_path = self.process_image(image.identifier, image.file_path, new_quality)
                         if file_path is not None:
                             image.file_path = file_path
                             image.timestamp = timestamp
@@ -80,7 +84,7 @@ class TelegramParser(ChatHandler):
                 self.clear_cache(self.chat_id)
 
             for url in urls:
-                image_data = ImageData(url, timestamp)
+                image_data = ImageData(identifier=url, record_type=RecordType.TEXT, timestamp=timestamp)
                 self.add_to_cache(self.chat_id, image_data)
 
     # TODO check multiple image upload - seems like multiple messages are created
@@ -96,7 +100,8 @@ class TelegramParser(ChatHandler):
         self.bot.download_file(file_id=file_id, dest=new_file_path)
 
         self.clear_cache(self.chat_id)
-        image_data = ImageData(url=None, timestamp=timestamp, file_path=new_file_path)
+        image_data = ImageData(identifier=file_id, record_type=RecordType.IMAGE,
+                               timestamp=timestamp, file_path=new_file_path)
         self.add_to_cache(self.chat_id, image_data)
 
     @staticmethod
@@ -119,10 +124,10 @@ class TelegramParser(ChatHandler):
             return quality - 10
 
     @staticmethod
-    def process_image(url, file_path, quality):
+    def process_image(identifier, file_path, quality):
         new_file_path = None
         if file_path is None:
-            file_path = wget.download(url, out=TelegramParser.DOWNLOAD_DIR)
+            file_path = wget.download(identifier, out=TelegramParser.DOWNLOAD_DIR)
 
         try:
             if file_path.endswith(('.png', '.jpg')):

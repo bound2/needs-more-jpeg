@@ -28,6 +28,7 @@ class ImageData:
         if isinstance(other, self.__class__):
             return not self.__eq__(other)
         return NotImplemented
+
     # TODO url hash comparison is bad due to it not existing in image messages
     def __hash__(self):
         return hash(self.url)
@@ -123,7 +124,7 @@ class TelegramParser(ChatHandler):
     def cache_file_path():
         return os.getcwd() + '/' + TelegramParser.CACHED_DIR + '/' + uuid.uuid4().hex + '.jpg'
 
-# TODO ERROR:root:on_close() called due to IdleTerminate: 10 will clear cache
+
 if __name__ == '__main__':
     TOKEN = ''
 

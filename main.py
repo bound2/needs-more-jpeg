@@ -13,10 +13,11 @@ from collections import defaultdict
 
 
 class ImageData:
-    def __init__(self, url, timestamp, file_path=None):
+    def __init__(self, url, timestamp, file_path=None, times_parsed=0):
         self.url = url
         self.timestamp = timestamp
         self.file_path = file_path
+        self.times_parsed = times_parsed
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
@@ -60,10 +61,11 @@ class TelegramParser(ChatHandler):
         if 'needs more jpeg' in text:
             for image in self._cache[self.chat_id]:
                 if image.timestamp + TelegramParser.TTL > timestamp:
-                    file_path = self.process_image(image.url, image.file_path)
+                    file_path = self.process_image(image.url, image.file_path, image.times_parsed)
                     if file_path is not None:
                         image.file_path = file_path
                         image.timestamp = timestamp
+                        image.times_parsed += 1
                         self.sender.sendPhoto(photo=open(file_path, 'rb'))
         else:
             urls = re.findall(TelegramParser.URL_REGEX, text)
@@ -99,7 +101,7 @@ class TelegramParser(ChatHandler):
         self._cache[self.chat_id] = frozenset()
 
     @staticmethod
-    def process_image(url, file_path):
+    def process_image(url, file_path, times_parsed):
         new_file_path = None
         if file_path is None:
             file_path = wget.download(url, out=TelegramParser.DOWNLOAD_DIR)
@@ -108,8 +110,8 @@ class TelegramParser(ChatHandler):
             if file_path.endswith(('.png', '.jpg')):
                 new_file_path = TelegramParser.cache_file_path()
                 image = Image.open(file_path)
-                # TODO check that it doesn't try to upscale the quality
-                image.save(new_file_path, quality=25, optimize=True, progressive=True)
+                quality = 50 - (10 * times_parsed)
+                image.save(new_file_path, 'JPEG', quality=quality, optimize=True, progressive=True)
         finally:
             os.remove(file_path)
 

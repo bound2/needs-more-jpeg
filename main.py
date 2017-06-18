@@ -10,6 +10,7 @@ from telepot.loop import MessageLoop
 from telepot.delegate import per_chat_id, create_open, pave_event_space
 from PIL import Image
 from collections import defaultdict
+from ConfigParser import ConfigParser
 
 
 class ImageData:
@@ -139,9 +140,12 @@ class TelegramParser(ChatHandler):
 
 
 if __name__ == '__main__':
-    TOKEN = ''
+    config = ConfigParser()
+    config.read('config.ini')
+    section = config.sections().pop()
+    token = config.get(section, 'token')
 
-    bot = DelegatorBot(TOKEN, [
+    bot = DelegatorBot(token, [
         pave_event_space()(
             per_chat_id(), create_open, TelegramParser, timeout=10
         ),

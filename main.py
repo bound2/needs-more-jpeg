@@ -106,7 +106,7 @@ class TelegramParser(ChatHandler):
 
     @staticmethod
     def determine_new_quality(quality):
-        if quality < 1:
+        if quality <= 1:
             raise ValueError('Quality can not be reduced any more')
         if quality <= 10:
             return quality - 1

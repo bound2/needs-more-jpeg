@@ -71,18 +71,18 @@ class TelegramParser(ChatHandler):
                             image.quality = new_quality
                             self.sender.sendPhoto(photo=open(file_path, 'rb'))
             except ValueError as e:
-                self._clear_cache(self.chat_id)
+                self.clear_cache(self.chat_id)
                 self.sender.sendMessage(e.message)
         else:
             urls = re.findall(TelegramParser.URL_REGEX, text)
             if len(urls) > 0:
-                self._clear_cache(self.chat_id)
+                self.clear_cache(self.chat_id)
 
             for url in urls:
                 image_data = ImageData(url, timestamp)
-                self._add_to_cache(self.chat_id, image_data)
+                self.add_to_cache(self.chat_id, image_data)
 
-    # TODO check multiple image upload
+    # TODO check multiple image upload - seems like multiple messages are created
     def process_image_message(self, photos, timestamp):
         best_resolution_photo = photos[-1]
         for photo in photos:
@@ -94,18 +94,18 @@ class TelegramParser(ChatHandler):
         new_file_path = TelegramParser.cache_file_path()
         self.bot.download_file(file_id=file_id, dest=new_file_path)
 
-        self._clear_cache(self.chat_id)
+        self.clear_cache(self.chat_id)
         image_data = ImageData(url=None, timestamp=timestamp, file_path=new_file_path)
-        self._add_to_cache(self.chat_id, image_data)
+        self.add_to_cache(self.chat_id, image_data)
 
     @staticmethod
-    def _add_to_cache(chat_id, image_data):
+    def add_to_cache(chat_id, image_data):
         cached_images = set(TelegramParser.CACHE[chat_id])
         cached_images.add(image_data)
         TelegramParser.CACHE[chat_id] = frozenset(cached_images)
 
     @staticmethod
-    def _clear_cache(chat_id):
+    def clear_cache(chat_id):
         TelegramParser.CACHE[chat_id] = frozenset()
 
     @staticmethod

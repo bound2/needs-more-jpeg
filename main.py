@@ -12,10 +12,10 @@ from PIL import Image
 
 
 class ImageData:
-    def __init__(self, url, timestamp):
+    def __init__(self, url, timestamp, file_path=None):
         self.url = url
         self.timestamp = timestamp
-        self.file_path = None
+        self.file_path = file_path
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
@@ -48,25 +48,47 @@ class TelegramParser(ChatHandler):
 
     def on_chat_message(self, msg):
         raw_text = msg.get('text')
-        print raw_text
+        raw_photos = msg.get('photo')
         current_timestamp = int(time.time())
 
-        if 'needs more jpeg' in raw_text:
+        if raw_photos is not None:
+            self.process_image_message(photos=raw_photos, timestamp=current_timestamp)
+        elif raw_text is not None:
+            self.process_text_message(text=raw_text, timestamp=current_timestamp)
+
+    def process_text_message(self, text, timestamp):
+        if 'needs more jpeg' in text:
             for image in self.url_cache:
-                if image.timestamp + TelegramParser.TTL > current_timestamp:
+                if image.timestamp + TelegramParser.TTL > timestamp:
                     file_path = self.process_image(image.url, image.file_path)
                     if file_path is not None:
                         image.file_path = file_path
-                        image.timestamp = current_timestamp
+                        image.timestamp = timestamp
                         self.sender.sendPhoto(photo=open(file_path, 'rb'))
         else:
-            urls = re.findall(TelegramParser.URL_REGEX, raw_text)
+            urls = re.findall(TelegramParser.URL_REGEX, text)
             if len(urls) > 0:
                 self.url_cache.clear()
 
             for url in urls:
-                image_data = ImageData(url, current_timestamp)
+                image_data = ImageData(url, timestamp)
                 self.url_cache.add(image_data)
+
+    # TODO check multiple image upload
+    def process_image_message(self, photos, timestamp):
+        best_resolution_photo = photos[-1]
+        for photo in photos:
+            if photo.get('width') > best_resolution_photo.get('width') \
+                    or photo.get('height') > best_resolution_photo.get('height'):
+                best_resolution_photo = photo
+
+        file_id = best_resolution_photo.get('file_id')
+        new_file_path = TelegramParser.cache_file_path()
+        self.bot.download_file(file_id=file_id, dest=new_file_path)
+
+        self.url_cache.clear()
+        image_data = ImageData(url=None, timestamp=timestamp, file_path=new_file_path)
+        self.url_cache.add(image_data)
 
     @staticmethod
     def process_image(url, file_path):
@@ -76,16 +98,20 @@ class TelegramParser(ChatHandler):
 
         try:
             if file_path.endswith(('.png', '.jpg')):
-                new_file_path = os.getcwd() + '/' + TelegramParser.CACHED_DIR + '/' + uuid.uuid4().hex + '.jpg'
+                new_file_path = TelegramParser.cache_file_path()
                 image = Image.open(file_path)
                 # TODO check that it doesn't try to upscale the quality
-                image.save(new_file_path, "JPEG", quality=75, optimize=True, progressive=True)
+                image.save(new_file_path, quality=25, optimize=True, progressive=True)
         finally:
             os.remove(file_path)
 
         return new_file_path
 
+    @staticmethod
+    def cache_file_path():
+        return os.getcwd() + '/' + TelegramParser.CACHED_DIR + '/' + uuid.uuid4().hex + '.jpg'
 
+# TODO ERROR:root:on_close() called due to IdleTerminate: 10 will clear cache
 if __name__ == '__main__':
     TOKEN = ''
 

@@ -13,11 +13,11 @@ from collections import defaultdict
 
 
 class ImageData:
-    def __init__(self, url, timestamp, file_path=None, times_parsed=0):
+    def __init__(self, url, timestamp, file_path=None, quality=50):
         self.url = url
         self.timestamp = timestamp
         self.file_path = file_path
-        self.times_parsed = times_parsed
+        self.quality = quality
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
@@ -62,11 +62,12 @@ class TelegramParser(ChatHandler):
         if 'needs more jpeg' in text:
             for image in TelegramParser.CACHE[self.chat_id]:
                 if image.timestamp + TelegramParser.TTL > timestamp:
-                    file_path = self.process_image(image.url, image.file_path, image.times_parsed)
+                    new_quality = self.determine_new_quality(image.quality)
+                    file_path = self.process_image(image.url, image.file_path, new_quality)
                     if file_path is not None:
                         image.file_path = file_path
                         image.timestamp = timestamp
-                        image.times_parsed += 1
+                        image.quality = new_quality
                         self.sender.sendPhoto(photo=open(file_path, 'rb'))
         else:
             urls = re.findall(TelegramParser.URL_REGEX, text)
@@ -104,7 +105,16 @@ class TelegramParser(ChatHandler):
         TelegramParser.CACHE[chat_id] = frozenset()
 
     @staticmethod
-    def process_image(url, file_path, times_parsed):
+    def determine_new_quality(quality):
+        if quality < 1:
+            raise ValueError('Quality can not be reduced any more')
+        if quality <= 10:
+            return quality - 1
+        else:
+            return quality - 10
+
+    @staticmethod
+    def process_image(url, file_path, quality):
         new_file_path = None
         if file_path is None:
             file_path = wget.download(url, out=TelegramParser.DOWNLOAD_DIR)
@@ -113,8 +123,7 @@ class TelegramParser(ChatHandler):
             if file_path.endswith(('.png', '.jpg')):
                 new_file_path = TelegramParser.cache_file_path()
                 image = Image.open(file_path)
-                quality = 50 - (10 * times_parsed)
-                image.save(new_file_path, 'JPEG', quality=quality, optimize=True, progressive=True)
+                image.save(new_file_path, 'JPEG', quality=quality, optimize=False, progressive=False)
         finally:
             os.remove(file_path)
 

@@ -60,15 +60,19 @@ class TelegramParser(ChatHandler):
 
     def process_text_message(self, text, timestamp):
         if 'needs more jpeg' in text:
-            for image in TelegramParser.CACHE[self.chat_id]:
-                if image.timestamp + TelegramParser.TTL > timestamp:
-                    new_quality = self.determine_new_quality(image.quality)
-                    file_path = self.process_image(image.url, image.file_path, new_quality)
-                    if file_path is not None:
-                        image.file_path = file_path
-                        image.timestamp = timestamp
-                        image.quality = new_quality
-                        self.sender.sendPhoto(photo=open(file_path, 'rb'))
+            try:
+                for image in TelegramParser.CACHE[self.chat_id]:
+                    if image.timestamp + TelegramParser.TTL > timestamp:
+                        new_quality = self.determine_new_quality(image.quality)
+                        file_path = self.process_image(image.url, image.file_path, new_quality)
+                        if file_path is not None:
+                            image.file_path = file_path
+                            image.timestamp = timestamp
+                            image.quality = new_quality
+                            self.sender.sendPhoto(photo=open(file_path, 'rb'))
+            except ValueError as e:
+                self._clear_cache(self.chat_id)
+                self.sender.sendMessage(e.message)
         else:
             urls = re.findall(TelegramParser.URL_REGEX, text)
             if len(urls) > 0:
@@ -107,7 +111,7 @@ class TelegramParser(ChatHandler):
     @staticmethod
     def determine_new_quality(quality):
         if quality <= 1:
-            raise ValueError('Quality can not be reduced any more')
+            raise ValueError('Quality can not be reduced any more!!!')
         if quality <= 10:
             return quality - 1
         else:

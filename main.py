@@ -35,6 +35,7 @@ class ImageData:
 
 class TelegramParser(ChatHandler):
     TTL = 2 * 60 * 1000
+    CACHE = defaultdict(frozenset)
     CACHED_DIR = 'cache'
     DOWNLOAD_DIR = 'downloads'
     URL_REGEX = r'^(?:(?:https?|ftp)://)(?:\S+(?::\S*)?@)?(?:(?:[1-9]\d?|1\d\d|2[01]\d|22[0-3])' \
@@ -45,7 +46,6 @@ class TelegramParser(ChatHandler):
 
     def __init__(self, *args, **kwargs):
         super(TelegramParser, self).__init__(*args, **kwargs)
-        self._cache = defaultdict(frozenset)
 
     def on_chat_message(self, msg):
         raw_text = msg.get('text')
@@ -59,7 +59,7 @@ class TelegramParser(ChatHandler):
 
     def process_text_message(self, text, timestamp):
         if 'needs more jpeg' in text:
-            for image in self._cache[self.chat_id]:
+            for image in TelegramParser.CACHE[self.chat_id]:
                 if image.timestamp + TelegramParser.TTL > timestamp:
                     file_path = self.process_image(image.url, image.file_path, image.times_parsed)
                     if file_path is not None:
@@ -70,11 +70,11 @@ class TelegramParser(ChatHandler):
         else:
             urls = re.findall(TelegramParser.URL_REGEX, text)
             if len(urls) > 0:
-                self._clear_cache()
+                self._clear_cache(self.chat_id)
 
             for url in urls:
                 image_data = ImageData(url, timestamp)
-                self._add_to_cache(image_data)
+                self._add_to_cache(self.chat_id, image_data)
 
     # TODO check multiple image upload
     def process_image_message(self, photos, timestamp):
@@ -88,17 +88,19 @@ class TelegramParser(ChatHandler):
         new_file_path = TelegramParser.cache_file_path()
         self.bot.download_file(file_id=file_id, dest=new_file_path)
 
-        self._clear_cache()
+        self._clear_cache(self.chat_id)
         image_data = ImageData(url=None, timestamp=timestamp, file_path=new_file_path)
-        self._add_to_cache(image_data)
+        self._add_to_cache(self.chat_id, image_data)
 
-    def _add_to_cache(self, image_data):
-        cached_images = set(self._cache[self.chat_id])
+    @staticmethod
+    def _add_to_cache(chat_id, image_data):
+        cached_images = set(TelegramParser.CACHE[chat_id])
         cached_images.add(image_data)
-        self._cache[self.chat_id] = frozenset(cached_images)
+        TelegramParser.CACHE[chat_id] = frozenset(cached_images)
 
-    def _clear_cache(self):
-        self._cache[self.chat_id] = frozenset()
+    @staticmethod
+    def _clear_cache(chat_id):
+        TelegramParser.CACHE[chat_id] = frozenset()
 
     @staticmethod
     def process_image(url, file_path, times_parsed):

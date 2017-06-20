@@ -1,6 +1,7 @@
 import os
 import time
 import mock
+import copy
 import unittest
 import testhelper
 
@@ -92,14 +93,35 @@ class TelegramTest(unittest.TestCase):
     @mock.patch('__main__.DelegatorBot.sendPhoto', return_value=testhelper.result_send_image_from_gallery)
     @mock.patch('__main__.DelegatorBot.sendMessage', return_value=testhelper.result_error_cache_empty)
     def test_image_ttl(self, message_mock, photo_mock):
+        initial_value = TelegramParser.TTL
         TelegramParser.TTL = 10
+        try:
+            self._bot.handle(testhelper.image_msg)
+            time.sleep(11)
+            self._bot.handle(testhelper.text_msg_command)
+            time.sleep(11)
+            assert photo_mock.call_count == 0
+            assert message_mock.call_count == 1
+            assert len(TelegramParser.CACHE[27968550]) == 0
+        finally:
+            TelegramParser.TTL = initial_value
+
+    @mock.patch('__main__.DelegatorBot.sendPhoto', return_value=testhelper.result_send_image_from_gallery)
+    def test_different_chats_caches(self, photo_mock):
         self._bot.handle(testhelper.image_msg)
-        time.sleep(11)
-        self._bot.handle(testhelper.text_msg_command)
-        time.sleep(11)
-        assert photo_mock.call_count == 0
-        assert message_mock.call_count == 1
-        assert len(TelegramParser.CACHE[27968550]) == 0
+        time.sleep(2)
+        # Modify ids from the original test data
+        different_user_image_msg = copy.deepcopy(testhelper.image_msg)
+        different_user_image_msg['chat']['id'] = 27000500
+        different_user_image_msg['from']['id'] = 27000500
+        self._bot.handle(different_user_image_msg)
+        time.sleep(2)
+        # Validate cache
+        first_user_cache = TelegramParser.CACHE[27968550]
+        second_user_cache = TelegramParser.CACHE[27000500]
+        assert len(first_user_cache) == 1
+        assert len(second_user_cache) == 1
+        assert len(TelegramParser.CACHE) == 2
 
 
 if __name__ == '__main__':

@@ -10,16 +10,19 @@ from main import TelegramParser
 
 
 class TelegramTest(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        # TODO should it be created before every tests? seems like otherwise it's conflicting
+    def setUp(self):
         token = os.environ.get('TOKEN', '133505823:AAHZFMHno3mzVLErU5b5jJvaeG--qUyLyG0')
         bot = DelegatorBot(token, [
             pave_event_space()(
                 per_chat_id(), create_open, TelegramParser, timeout=10
             ),
         ])
-        cls._bot = bot
+        self._bot = bot
+        TelegramParser.CACHE.clear()
+
+    # TODO kill bot object
+    def tearDown(self):
+        pass
 
     @mock.patch('__main__.DelegatorBot.sendPhoto', return_value=testhelper.result_send_image_from_text)
     @mock.patch('__main__.DelegatorBot.sendMessage', return_value=testhelper.result_error_quality)
@@ -68,11 +71,12 @@ class TelegramTest(unittest.TestCase):
 
         # Override previous value by sending new image
         self._bot.handle(testhelper.image_msg)
+        time.sleep(1)
         second_cache_value = TelegramParser.CACHE[27968550]
 
         assert len(first_cache_value) == 1
         assert len(second_cache_value) == 1
-        assert first_cache_value[0] != second_cache_value[0]
+        assert next(iter(first_cache_value)) != next(iter(second_cache_value))
 
     @mock.patch('__main__.DelegatorBot.sendMessage', return_value=testhelper.result_error_cache_empty)
     def test_needs_more_jpeg_without_image(self, message_mock):

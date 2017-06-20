@@ -66,7 +66,11 @@ class TelegramParser(ChatHandler):
     def process_text_message(self, text, timestamp):
         if 'needs more jpeg' in text:
             try:
-                for image in TelegramParser.CACHE[self.chat_id]:
+                images = TelegramParser.CACHE[self.chat_id]
+                if len(images) == 0:
+                    raise ValueError('There are no images that need more jpeg!')
+
+                for image in images:
                     if image.timestamp + TelegramParser.TTL > timestamp:
                         new_quality = self.determine_new_quality(image.quality)
                         file_path = self.process_image(image.identifier, image.file_path, new_quality)

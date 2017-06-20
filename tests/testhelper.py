@@ -59,10 +59,18 @@ result_send_image_from_gallery = {
     u'chat': {u'first_name': u'\U0001f434\U0001f434\U0001f434', u'type': u'private', u'id': 27968550}
 }
 
-result_quality_error = {
+result_error_quality = {
     u'date': 1497913744,
     u'text': u'Quality can not be reduced any more!!!',
     u'from': {u'username': u'needs_more_jpeg_bot', u'first_name': u'Needs more jpeg', u'id': 421757934},
     u'message_id': 666,
+    u'chat': {u'first_name': u'\U0001f434\U0001f434\U0001f434', u'type': u'private', u'id': 27968550}
+}
+
+result_error_cache_empty = {
+    u'date': 1497995952,
+    u'text': u'There are no images that need more jpeg!',
+    u'from': {u'username': u'needs_more_jpeg_bot', u'first_name': u'Needs more jpeg', u'id': 421757934},
+    u'message_id': 668,
     u'chat': {u'first_name': u'\U0001f434\U0001f434\U0001f434', u'type': u'private', u'id': 27968550}
 }

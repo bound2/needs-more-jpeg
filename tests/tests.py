@@ -22,9 +22,8 @@ class TelegramTest(unittest.TestCase):
         cls._bot = bot
 
     @mock.patch('__main__.DelegatorBot.sendPhoto', return_value=testhelper.result_send_image_from_text)
-    @mock.patch('__main__.DelegatorBot.sendMessage', return_value=testhelper.result_quality_error)
-    def test_parsed_url_added_to_cache(self, message_mock, photo_mock):
-        TelegramParser.CACHE.clear()
+    @mock.patch('__main__.DelegatorBot.sendMessage', return_value=testhelper.result_error_quality)
+    def test_needs_more_jpeg_integration(self, message_mock, photo_mock):
         # Check that posted url gets into cache
         self._bot.handle(testhelper.text_msg_url)
         time.sleep(1)
@@ -48,6 +47,43 @@ class TelegramTest(unittest.TestCase):
         assert photo_mock.call_count == 13
         assert message_mock.call_count == 1
         assert len(TelegramParser.CACHE[27968550]) == 0  # cache will be cleared when limit is hit
+
+    @mock.patch('__main__.DelegatorBot.sendPhoto', return_value=testhelper.result_send_image_from_gallery)
+    def test_image_from_gallery_integration(self, photo_mock):
+        # Check that posted image gets into cache
+        self._bot.handle(testhelper.image_msg)
+        time.sleep(1)
+        assert len(TelegramParser.CACHE[27968550]) == 1
+        assert len(TelegramParser.CACHE[21345678]) == 0
+
+        # Check that response is called by bot
+        self._bot.handle(testhelper.text_msg_command)
+        time.sleep(1)
+        assert photo_mock.call_count == 1
+
+    def test_cache_is_overriden_by_new_message(self):
+        self._bot.handle(testhelper.text_msg_url)
+        time.sleep(1)
+        first_cache_value = TelegramParser.CACHE[27968550]
+
+        # Override previous value by sending new image
+        self._bot.handle(testhelper.image_msg)
+        second_cache_value = TelegramParser.CACHE[27968550]
+
+        assert len(first_cache_value) == 1
+        assert len(second_cache_value) == 1
+        assert first_cache_value[0] != second_cache_value[0]
+
+    @mock.patch('__main__.DelegatorBot.sendMessage', return_value=testhelper.result_error_cache_empty)
+    def test_needs_more_jpeg_without_image(self, message_mock):
+        # Should give feedback to the user that there are no images that need more jpeg
+        self._bot.handle(testhelper.text_msg_command)
+        time.sleep(1)
+        assert message_mock.call_count == 1
+
+        self._bot.handle(testhelper.text_msg_command)
+        time.sleep(1)
+        assert message_mock.call_count == 2
 
 
 if __name__ == '__main__':

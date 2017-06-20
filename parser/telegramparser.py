@@ -1,16 +1,12 @@
-import time
 import re
 import os
 import wget
+import time
 import uuid
 
-from telepot import DelegatorBot
 from telepot.helper import ChatHandler
-from telepot.loop import MessageLoop
-from telepot.delegate import per_chat_id, create_open, pave_event_space
 from PIL import Image
 from collections import defaultdict
-from ConfigParser import ConfigParser
 from enum import Enum
 
 
@@ -146,21 +142,3 @@ class TelegramParser(ChatHandler):
     @staticmethod
     def cache_file_path():
         return os.getcwd() + '/' + TelegramParser.CACHED_DIR + '/' + uuid.uuid4().hex + '.jpg'
-
-
-if __name__ == '__main__':
-    config = ConfigParser()
-    config.read('config.ini')
-    section = config.sections().pop()
-    token = config.get(section, 'token')
-
-    bot = DelegatorBot(token, [
-        pave_event_space()(
-            per_chat_id(), create_open, TelegramParser, timeout=10
-        ),
-    ])
-    MessageLoop(bot).run_as_thread()
-    print('Listening ...')
-
-    while 1:
-        time.sleep(10)

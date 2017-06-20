@@ -6,7 +6,7 @@ import testhelper
 
 from telepot import DelegatorBot
 from telepot.delegate import per_chat_id, create_open, pave_event_space
-from main import TelegramParser
+from bot import TelegramParser
 
 
 class TelegramTest(unittest.TestCase):

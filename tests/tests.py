@@ -89,6 +89,17 @@ class TelegramTest(unittest.TestCase):
         time.sleep(2)
         assert message_mock.call_count == 2
 
+    @mock.patch('__main__.DelegatorBot.sendPhoto', return_value=testhelper.result_send_image_from_gallery)
+    @mock.patch('__main__.DelegatorBot.sendMessage', return_value=testhelper.result_error_cache_empty)
+    def test_image_ttl(self, message_mock, photo_mock):
+        TelegramParser.TTL = 10
+        self._bot.handle(testhelper.image_msg)
+        time.sleep(11)
+        self._bot.handle(testhelper.text_msg_command)
+        time.sleep(11)
+        assert photo_mock.call_count == 0
+        assert message_mock.call_count == 1
+
 
 if __name__ == '__main__':
     unittest.main()

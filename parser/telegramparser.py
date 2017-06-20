@@ -36,7 +36,7 @@ class ImageData:
 
 
 class TelegramParser(ChatHandler):
-    TTL = 2 * 60 * 1000
+    TTL = 2 * 60
     CACHE = defaultdict(frozenset)
     CACHED_DIR = 'cache'
     DOWNLOAD_DIR = 'downloads'
@@ -62,11 +62,8 @@ class TelegramParser(ChatHandler):
     def process_text_message(self, text, timestamp):
         if 'needs more jpeg' in text:
             try:
-                images = TelegramParser.CACHE[self.chat_id]
-                if len(images) == 0:
-                    raise ValueError('There are no images that need more jpeg!')
-
-                for image in images:
+                images_processed = 0
+                for image in TelegramParser.CACHE[self.chat_id]:
                     if image.timestamp + TelegramParser.TTL > timestamp:
                         new_quality = self.determine_new_quality(image.quality)
                         file_path = self.process_image(image.identifier, image.file_path, new_quality)
@@ -75,6 +72,9 @@ class TelegramParser(ChatHandler):
                             image.timestamp = timestamp
                             image.quality = new_quality
                             self.sender.sendPhoto(photo=open(file_path, 'rb'))
+                            images_processed += 1
+                if images_processed == 0:
+                    raise ValueError('There are no images that need more jpeg!')
             except ValueError as e:
                 self.clear_cache(self.chat_id)
                 self.sender.sendMessage(e.message)

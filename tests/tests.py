@@ -99,6 +99,7 @@ class TelegramTest(unittest.TestCase):
         time.sleep(11)
         assert photo_mock.call_count == 0
         assert message_mock.call_count == 1
+        assert len(TelegramParser.CACHE[27968550]) == 0
 
 
 if __name__ == '__main__':

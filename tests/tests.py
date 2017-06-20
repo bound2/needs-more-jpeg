@@ -29,13 +29,13 @@ class TelegramTest(unittest.TestCase):
     def test_needs_more_jpeg_integration(self, message_mock, photo_mock):
         # Check that posted url gets into cache
         self._bot.handle(testhelper.text_msg_url)
-        time.sleep(1)
+        time.sleep(2)
         assert len(TelegramParser.CACHE[27968550]) == 1
         assert len(TelegramParser.CACHE[21345678]) == 0
 
         # Check that response is called by bot
         self._bot.handle(testhelper.text_msg_command)
-        time.sleep(1)
+        time.sleep(3)
         assert photo_mock.call_count == 1
 
         # Test that exception will be thrown and message will be sent to client
@@ -46,7 +46,7 @@ class TelegramTest(unittest.TestCase):
 
         # Validate that message was sent as the quality can't be reduced any further
         self._bot.handle(testhelper.text_msg_command)
-        time.sleep(1)
+        time.sleep(5)
         assert photo_mock.call_count == 13
         assert message_mock.call_count == 1
         assert len(TelegramParser.CACHE[27968550]) == 0  # cache will be cleared when limit is hit
@@ -55,23 +55,23 @@ class TelegramTest(unittest.TestCase):
     def test_image_from_gallery_integration(self, photo_mock):
         # Check that posted image gets into cache
         self._bot.handle(testhelper.image_msg)
-        time.sleep(1)
+        time.sleep(2)
         assert len(TelegramParser.CACHE[27968550]) == 1
         assert len(TelegramParser.CACHE[21345678]) == 0
 
         # Check that response is called by bot
         self._bot.handle(testhelper.text_msg_command)
-        time.sleep(1)
+        time.sleep(2)
         assert photo_mock.call_count == 1
 
     def test_cache_is_overriden_by_new_message(self):
         self._bot.handle(testhelper.text_msg_url)
-        time.sleep(1)
+        time.sleep(2)
         first_cache_value = TelegramParser.CACHE[27968550]
 
         # Override previous value by sending new image
         self._bot.handle(testhelper.image_msg)
-        time.sleep(1)
+        time.sleep(2)
         second_cache_value = TelegramParser.CACHE[27968550]
 
         assert len(first_cache_value) == 1
@@ -82,11 +82,11 @@ class TelegramTest(unittest.TestCase):
     def test_needs_more_jpeg_without_image(self, message_mock):
         # Should give feedback to the user that there are no images that need more jpeg
         self._bot.handle(testhelper.text_msg_command)
-        time.sleep(1)
+        time.sleep(2)
         assert message_mock.call_count == 1
 
         self._bot.handle(testhelper.text_msg_command)
-        time.sleep(1)
+        time.sleep(2)
         assert message_mock.call_count == 2
 
 

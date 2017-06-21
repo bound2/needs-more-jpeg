@@ -90,6 +90,20 @@ class TelegramTest(unittest.TestCase):
         time.sleep(2)
         assert message_mock.call_count == 2
 
+    @mock.patch('__main__.DelegatorBot.sendMessage', return_value=testhelper.result_error_cache_empty)
+    def test_non_image_url(self, message_mock):
+        text_msg_non_image_url = copy.deepcopy(testhelper.text_msg_url)
+        text_msg_non_image_url['text'] = 'https://google.com'
+        # Validate that item was added to cache due to being url
+        self._bot.handle(text_msg_non_image_url)
+        time.sleep(2)
+        assert len(TelegramParser.CACHE[27968550]) == 1
+        # Validate that error message was sent to the client and the cache is cleared
+        self._bot.handle(testhelper.text_msg_command)
+        time.sleep(2)
+        assert message_mock.call_count == 1
+        assert len(TelegramParser.CACHE[27968550]) == 0
+
     @mock.patch('__main__.DelegatorBot.sendPhoto', return_value=testhelper.result_send_image_from_gallery)
     @mock.patch('__main__.DelegatorBot.sendMessage', return_value=testhelper.result_error_cache_empty)
     def test_image_ttl(self, message_mock, photo_mock):

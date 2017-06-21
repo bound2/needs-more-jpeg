@@ -16,7 +16,7 @@ class RecordType(Enum):
 
 
 class ImageData:
-    def __init__(self, identifier, record_type, timestamp, file_path=None, quality=50):
+    def __init__(self, identifier, record_type, timestamp, file_path=None, quality=30):
         self.identifier = identifier
         self.record_type = record_type
         self.timestamp = timestamp

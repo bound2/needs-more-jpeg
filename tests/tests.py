@@ -40,15 +40,15 @@ class TelegramTest(unittest.TestCase):
         assert photo_mock.call_count == 1
 
         # Test that exception will be thrown and message will be sent to client
-        for i in range(0, 12):
+        for i in range(0, 10):
             self._bot.handle(testhelper.text_msg_command)
         time.sleep(3)
-        assert photo_mock.call_count == 13
+        assert photo_mock.call_count == 11
 
         # Validate that message was sent as the quality can't be reduced any further
         self._bot.handle(testhelper.text_msg_command)
         time.sleep(5)
-        assert photo_mock.call_count == 13
+        assert photo_mock.call_count == 11
         assert message_mock.call_count == 1
         assert len(TelegramParser.CACHE[27968550]) == 0  # cache will be cleared when limit is hit
 
